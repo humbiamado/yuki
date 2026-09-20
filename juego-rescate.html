@@ -2,28 +2,43 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>La aventura de rescatar a Jochi y Umi</title>
 <style>
   :root{ --ink:#1a1a1a; --accent:#2e5fae; --accent2:#e0562b; }
   *{box-sizing:border-box;}
+  html, body{
+    height:100%;
+    overscroll-behavior:none;
+  }
   body{
-    margin:0; min-height:100vh;
+    margin:0;
     font-family:'Segoe UI', Arial, sans-serif;
     background:#274b6b;
     display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-    gap:10px; padding:12px;
+    gap:8px;
+    padding:10px;
+    padding-top:calc(10px + env(safe-area-inset-top, 0px));
+    padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+    overflow-x:hidden;
   }
-  h1{ color:#fff; font-size:18px; margin:4px 0; text-align:center; }
+  h1{ color:#fff; font-size:18px; margin:2px 0; text-align:center; }
 
   .game-wrap{
     position:relative;
     width:100%;
     max-width:800px;
+    /* Pick whichever of width/height is the limiting dimension so the
+       canvas fills as much of the screen as possible on any device,
+       phone or desktop, portrait or landscape. Falls back to the
+       100%/800px rule above on browsers that don't support dvh/min(). */
+    width:min(800px, 96vw, calc((100dvh - 110px) * 800 / 420));
+    max-width:100%;
   }
   canvas{
     width:100%;
     height:auto;
+    aspect-ratio:800/420;
     display:block;
     background:#8fc7e8;
     border:4px solid var(--ink);
@@ -34,18 +49,21 @@
 
   .hud{
     position:absolute;
-    top:14px; left:14px;
+    top:10px; left:10px;
     display:flex;
-    gap:8px;
+    gap:6px;
+    flex-wrap:wrap;
+    max-width:70%;
   }
   .hud .badge{
     background:#ffffffee;
     border:2px solid var(--ink);
     border-radius:20px;
-    padding:5px 10px;
+    padding:4px 9px;
     font-weight:bold;
-    font-size:13px;
+    font-size:clamp(10px, 2.6vw, 13px);
     display:flex; align-items:center; gap:5px;
+    white-space:nowrap;
   }
   .hud .badge.done{ background:#c9f2c0; }
 
@@ -56,65 +74,126 @@
     background:#fffaf0ee;
     border:3px solid var(--ink);
     border-radius:14px;
-    padding:16px 22px;
+    padding:12px 18px;
     font-weight:bold;
-    font-size:16px;
+    font-size:clamp(12px, 3vw, 16px);
     text-align:center;
     box-shadow:5px 5px 0 rgba(0,0,0,.3);
     opacity:0;
     pointer-events:none;
     transition:opacity .25s, transform .25s;
-    max-width:80%;
+    max-width:82%;
   }
   .toast.show{ opacity:1; transform:translate(-50%,-60%); }
 
   .win-overlay{
     position:absolute; inset:0;
-    background:rgba(20,30,50,.82);
+    background:rgba(20,30,50,.86);
     border-radius:8px;
     display:none;
     align-items:center; justify-content:center;
-    flex-direction:column; gap:10px;
+    flex-direction:column; gap:8px;
     text-align:center;
-    padding:20px;
+    padding:16px;
   }
   .win-overlay.show{ display:flex; }
-  .win-overlay h2{ color:#fff; font-size:26px; margin:0; }
-  .win-overlay p{ color:#e8eef7; font-size:14px; max-width:420px; margin:0; }
+  .win-overlay h2{ color:#fff; font-size:clamp(18px, 5vw, 26px); margin:0; }
+  .win-overlay p{ color:#e8eef7; font-size:clamp(11px, 2.8vw, 14px); max-width:420px; margin:0; }
   .win-overlay button{
-    margin-top:8px;
-    padding:10px 22px;
+    margin-top:6px;
+    padding:10px 20px;
     border:3px solid #fff;
     border-radius:10px;
     background:var(--accent2);
     color:#fff;
     font-weight:bold;
-    font-size:14px;
+    font-size:clamp(12px, 3vw, 14px);
     cursor:pointer;
   }
 
-  .controls{
-    display:flex; flex-direction:column; align-items:center; gap:8px;
-    width:100%; max-width:800px;
+  .touch-controls{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    padding:12px;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+    pointer-events:none;
   }
-  .row{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-  button.ctl{
-    font-family:inherit; font-weight:bold; font-size:13px;
-    padding:11px 16px; border:3px solid var(--ink); border-radius:10px;
-    background:#fff; cursor:pointer; box-shadow:3px 3px 0 var(--ink);
-    -webkit-user-select:none; user-select:none; touch-action:manipulation;
+  .tc-left, .tc-right{ pointer-events:auto; display:flex; }
+  .tc-left{ gap:clamp(8px, 2.5vw, 14px); align-items:center; }
+  .tc-right{ flex-direction:column; align-items:center; gap:clamp(6px, 1.8vw, 10px); }
+
+  .tc-btn{
+    border:3px solid var(--ink);
+    border-radius:50%;
+    background:rgba(255,255,255,0.82);
+    font-weight:bold;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:2px 3px 0 rgba(0,0,0,.35);
+    -webkit-user-select:none; user-select:none; touch-action:none;
+    cursor:pointer;
   }
-  button.ctl:active{ transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink); }
+  .tc-move{
+    width:clamp(46px, 13vw, 60px);
+    height:clamp(46px, 13vw, 60px);
+    font-size:clamp(16px, 4.5vw, 22px);
+  }
+  .tc-jump{
+    width:clamp(58px, 17vw, 78px);
+    height:clamp(58px, 17vw, 78px);
+    background:rgba(224,86,43,0.88);
+    color:#fff;
+    font-size:clamp(9px, 2.6vw, 11px);
+    line-height:1.1;
+    flex-direction:column;
+  }
+  .tc-small{
+    width:clamp(36px, 10vw, 46px);
+    height:clamp(36px, 10vw, 46px);
+    font-size:clamp(12px, 3.2vw, 15px);
+    background:rgba(255,255,255,0.7);
+  }
+  .tc-btn:active{ background:rgba(224,86,43,0.5); }
 
   .note{
-    max-width:520px; font-size:11.5px; color:#dbe6f2;
+    max-width:520px; font-size:11px; color:#dbe6f2;
     text-align:center; line-height:1.4;
+  }
+
+  .rotate-hint{
+    display:none;
+    color:#ffe9b0;
+    font-size:12px;
+    text-align:center;
+    font-weight:bold;
+  }
+
+  /* Small phones: tighten non-canvas chrome */
+  @media (max-width:480px){
+    body{ gap:5px; padding:6px; }
+    h1{ font-size:14px; margin:0; }
+    .note{ font-size:9.5px; }
+  }
+
+  /* Short / landscape phones: hide the instructions text so the canvas
+     (with its overlay controls) always fits without scrolling */
+  @media (max-height:480px){
+    .note{ display:none; }
+    h1{ font-size:13px; margin:0; }
+    body{ gap:4px; padding:5px; }
+  }
+
+  @media (max-width:480px) and (orientation:portrait){
+    .rotate-hint{ display:block; }
   }
 </style>
 </head>
 <body>
 
 <h1>🌟 La aventura de rescatar a Jochi y Umi 🌟</h1>
+<div class="rotate-hint">📱↻ Girá el celular para una pantalla más grande</div>
 
 <div class="game-wrap">
   <canvas id="game" width="800" height="420"></canvas>
@@ -138,22 +217,23 @@
     <p>Te quedaste sin corazones, pero se puede volver a intentar.</p>
     <button id="retryBtn">🔁 Intentar de nuevo</button>
   </div>
-</div>
 
-<div class="controls">
-  <div class="row">
-    <button class="ctl" id="btnLeft">◀ Izquierda</button>
-    <button class="ctl" id="btnJump">⬆ Saltar</button>
-    <button class="ctl" id="btnRight">Derecha ▶</button>
-  </div>
-  <div class="row">
-    <button class="ctl" id="btnCrouch">▼ Agachar</button>
-    <button class="ctl" id="btnRun">🏃 Correr (mantené)</button>
+  <div class="touch-controls">
+    <div class="tc-left">
+      <button class="tc-btn tc-move" id="btnLeft">◀</button>
+      <button class="tc-btn tc-move" id="btnRight">▶</button>
+    </div>
+    <div class="tc-right">
+      <button class="tc-btn tc-small" id="btnRun" title="Mantené para correr">🏃</button>
+      <button class="tc-btn tc-jump" id="btnJump">⬆<br>SALTAR</button>
+      <button class="tc-btn tc-small" id="btnCrouch" title="Mantené para agachar">▼</button>
+    </div>
   </div>
 </div>
 
 <div class="note">
   Flechas / A-D para moverte · Espacio para saltar · Flecha abajo / S para agacharte (hay una rama baja que solo se pasa agachado) · Mantené Shift para correr.<br>
+  En celular: el pulgar izquierdo mueve, el pulgar derecho salta — mantené uno y tocá el otro al mismo tiempo.<br>
   Buscá a Jochi y a Umi en el camino, esquivá los huecos, las cajas y las espinas, subite a la plataforma que se mueve, y llevalos de vuelta a casa con Deby y Luis.<br>
   Tenés 3 corazones ❤️ — cuidado con los pozos y las espinas. El sonido se activa con tu primer toque/tecla (por las políticas del navegador).
 </div>
