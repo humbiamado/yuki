@@ -304,7 +304,7 @@ kbd{font:600 11px var(--mono);background:#20242f;border:1px solid #363d52;border
   <main class="stage-col">
     <div class="stage-wrap" id="stage-wrap">
       <canvas id="stage" aria-label="Vista previa del cómic"></canvas>
-      <div class="stage-tip" id="stage-tip">Arrastra la onomatopeya para moverla · doble clic para reproducir</div>
+      <div class="stage-tip" id="stage-tip">Arrastra personajes u onomatopeyas para moverlos · doble clic para reproducir</div>
     </div>
     <div class="transport">
       <div class="transport-row">
@@ -430,7 +430,7 @@ OD.icon = (n, cls) => '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0
 const C = OD.CATALOG = {
   aspect: { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960, 960], '4:3': [960, 720] },
   bubble: [['normal', 'Normal'], ['shout', 'Grito'], ['thought', 'Pensamiento'], ['whisper', 'Susurro'], ['narration', 'Narración (recuadro)'], ['none', 'Sin cuadro de texto']],
-  background: [['sunset', 'Atardecer épico'], ['cyberpunk', 'Ciudad cyberpunk'], ['school', 'Azotea escolar'], ['dojo', 'Dojo carmesí'], ['space', 'Espacio profundo'], ['speedlines', 'Concentración'], ['void', 'Vacío oscuro']],
+  background: [['sunset', 'Atardecer épico'], ['cyberpunk', 'Ciudad cyberpunk'], ['school', 'Azotea escolar'], ['dojo', 'Dojo carmesí'], ['space', 'Espacio profundo'], ['speedlines', 'Concentración'], ['void', 'Vacío oscuro'], ['forest', 'Bosque encantado'], ['ocean', 'Fondo oceánico'], ['arena', 'Arena de combate'], ['castle', 'Castillo gótico'], ['neon', 'Túnel de neón']],
   bgMove: [['static', 'Fija'], ['zoom-in', 'Acercamiento lento'], ['zoom-out', 'Alejamiento lento'], ['pan-left', 'Paneo a la izquierda'], ['pan-right', 'Paneo a la derecha']],
   bgFx: [['none', 'Ninguno'], ['radial', 'Líneas de concentración'], ['horizontal', 'Líneas de velocidad'], ['sakura', 'Pétalos de sakura'], ['rain', 'Lluvia'], ['sparks', 'Chispas'], ['snow', 'Nieve']],
   camera: [['none', 'Ninguno'], ['shake', 'Temblor'], ['flash-white', 'Flash blanco'], ['flash-red', 'Flash rojo'], ['impact', 'Impact frame (negativo)'], ['punch', 'Zoom de impacto']],
@@ -459,7 +459,7 @@ function defaultCharacters() {
 }
 OD.defaultCharacters = defaultCharacters;
 OD.blankScene = over => Object.assign({ id: uid('sc'), speaker: '', text: '', bubble: 'normal', bg: { preset: 'sunset', asset: null, move: 'static' }, bgFx: 'none', camera: 'none', transition: 'cut', sfx: 'none', cast: [], onom: { text: '', x: 50, y: 22, size: 110, color: '', rot: -4 }, duration: null }, over || {});
-OD.member = (char, over) => Object.assign({ char, pose: 'neutral', pos: 'center', anim: 'idle', talking: false, flip: false }, over || {});
+OD.member = (char, over) => Object.assign({ char, pose: 'neutral', pos: 'center', anim: 'idle', talking: false, flip: false, freeX: null, freeY: null, scale: 1 }, over || {});
 const onom = (text, x, y, size, rot, color) => ({ text, x, y, size, rot, color: color || '' });
 
 OD.createProject = function (demo) {
@@ -522,7 +522,7 @@ function normScene(s, p, ids) {
   let talkSeen = false;
   const cast = (Array.isArray(s.cast) ? s.cast : []).filter(m => m && ids.has(m.char)).slice(0, 3).map(m => {
     const talking = !!m.talking && !talkSeen; if (talking) talkSeen = true;
-    return { char: m.char, pose: pick(m.pose, C.pose, 'neutral'), pos: pick(m.pos, C.position, 'center'), anim: pick(m.anim, C.anim, 'idle'), talking, flip: !!m.flip };
+    return { char: m.char, pose: pick(m.pose, C.pose, 'neutral'), pos: pick(m.pos, C.position, 'center'), anim: pick(m.anim, C.anim, 'idle'), talking, flip: !!m.flip, freeX: m.freeX != null ? num(m.freeX, null, 0, 100) : null, freeY: m.freeY != null ? num(m.freeY, null, 0, 100) : null, scale: num(m.scale, 1, 0.2, 3) };
   });
   return {
     id: validId(s.id) || uid('sc'), speaker: str(s.speaker, '', 80), text: str(s.text, '', 1200), bubble: pick(s.bubble, C.bubble, 'normal'),
@@ -1005,6 +1005,129 @@ const BG = {
     ctx.fillStyle = '#050508'; ctx.fillRect(box.x, box.y, box.w, box.h);
     ctx.fillStyle = grad(ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, Math.max(w, h) * 0.6), [[0, 'rgba(60,50,110,0.35)'], [1, 'rgba(0,0,0,0)']]);
     ctx.fillRect(box.x, box.y, box.w, box.h);
+  },
+  forest(r, ctx, t, w, h, u, box) {
+    const d = r.bgData('forest', w, h, R => ({
+      trees: Array.from({ length: 14 }, () => ({ x: R(), s: 0.6 + R() * 0.8, h: 0.5 + R() * 0.35, lean: (R() - 0.5) * 0.08 })),
+      fireflies: Array.from({ length: 50 }, () => ({ x: R(), y: R(), ph: R() * TAU, sp: 0.3 + R() * 1.5, s: 0.8 + R() * 1.5, dx: (R() - 0.5) * 40 }))
+    }));
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, 0, 0, h), [[0, '#0a1a0f'], [0.4, '#0d2818'], [0.7, '#0f3520'], [1, '#061a0c']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    const glow = grad(ctx.createRadialGradient(w * 0.3, h * 0.15, 0, w * 0.3, h * 0.15, h * 0.6), [[0, 'rgba(80,220,120,0.12)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillStyle = glow; ctx.fillRect(box.x, box.y, box.w, box.h);
+    const floorY = h * 0.78;
+    for (const tr of d.trees) {
+      const tx = tr.x * w * 1.2 - w * 0.1, tw = 28 * u * tr.s, th = tr.h * h;
+      ctx.fillStyle = '#1a0e08'; ctx.fillRect(tx - tw / 2, floorY - th, tw, th + 20 * u);
+      ctx.fillStyle = '#0d3318'; ctx.beginPath();
+      for (let j = 0; j < 3; j++) { const cy = floorY - th + th * (0.1 + j * 0.22), rx = (80 - j * 18) * u * tr.s, ry = (50 - j * 10) * u * tr.s; ctx.ellipse(tx + tr.lean * th, cy, rx, ry, 0, 0, TAU); }
+      ctx.fill();
+      ctx.fillStyle = '#1a5c30'; ctx.beginPath();
+      for (let j = 0; j < 3; j++) { const cy = floorY - th + th * (0.08 + j * 0.22), rx = (70 - j * 16) * u * tr.s, ry = (40 - j * 8) * u * tr.s; ctx.ellipse(tx + tr.lean * th, cy, rx, ry, 0, 0, TAU); }
+      ctx.fill();
+    }
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, floorY, 0, h), [[0, '#0a2a12'], [1, '#040d06']]);
+    ctx.fillRect(box.x, floorY, box.w, box.y + box.h - floorY);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const f of d.fireflies) {
+      const fx = mod(f.x * w + Math.sin(t * f.sp + f.ph) * f.dx * u, w), fy = f.y * h * 0.85;
+      const a = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * f.sp * 2 + f.ph));
+      ctx.fillStyle = `rgba(140,255,100,${a * 0.15})`; ctx.beginPath(); ctx.arc(fx, fy, f.s * 6 * u, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(180,255,140,${a})`; ctx.beginPath(); ctx.arc(fx, fy, f.s * u, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  },
+  ocean(r, ctx, t, w, h, u, box) {
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, 0, 0, h), [[0, '#001830'], [0.3, '#003366'], [0.7, '#001a33'], [1, '#000a15']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    ctx.save(); ctx.globalAlpha = 0.08;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * 0.6 - 0.15 + Math.sin(t * 0.3 + i) * 0.03;
+      const x0 = w * (0.3 + i * 0.06), far = h * 1.2;
+      ctx.fillStyle = '#5599cc'; ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0 + Math.sin(a) * far + 30 * u, far); ctx.lineTo(x0 + Math.sin(a) * far - 30 * u, far); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+    const Rb = rng(222);
+    for (let i = 0; i < 30; i++) {
+      const bx = Rb() * w, by = Rb() * h, bs = (2 + Rb() * 5) * u, sp = 8 + Rb() * 20;
+      const cy = mod(by - t * sp * u, h + 40 * u) - 20 * u, wobble = Math.sin(t * 0.8 + Rb() * TAU) * 10 * u;
+      ctx.fillStyle = `rgba(100,180,255,${0.15 + Rb() * 0.2})`; ctx.beginPath(); ctx.ellipse(bx + wobble, cy, bs, bs * 0.8, 0, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = grad(ctx.createRadialGradient(w * 0.5, -h * 0.2, 0, w * 0.5, -h * 0.2, h * 0.8), [[0, 'rgba(0,150,255,0.15)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+  },
+  arena(r, ctx, t, w, h, u, box) {
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, 0, 0, h), [[0, '#1a0a2e'], [0.5, '#2d1b4e'], [1, '#0a0515']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    const floorY = h * 0.68;
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, floorY, 0, h), [[0, '#2a1a3e'], [1, '#0f0818']]);
+    ctx.fillRect(box.x, floorY, box.w, box.y + box.h - floorY);
+    ctx.strokeStyle = 'rgba(180,100,255,0.15)'; ctx.lineWidth = 2 * u; ctx.beginPath();
+    for (let i = -12; i <= 12; i++) { ctx.moveTo(w / 2 + i * w * 0.04, floorY); ctx.lineTo(w / 2 + i * w * 0.25, h * 1.1); }
+    ctx.stroke();
+    for (let k = 0; k < 8; k++) { const q = (k + mod(t * 0.5, 1)) / 8, y = floorY + (h * 1.1 - floorY) * q * q; ctx.strokeStyle = `rgba(180,100,255,${0.06 + 0.12 * q})`; ctx.beginPath(); ctx.moveTo(box.x, y); ctx.lineTo(box.x + box.w, y); ctx.stroke(); }
+    [[0.3, '#ff2a55'], [0.5, '#8b3dff'], [0.7, '#00d2ff']].forEach(([lx, lc]) => {
+      ctx.fillStyle = grad(ctx.createRadialGradient(w * lx, 0, 0, w * lx, 0, h * 0.7), [[0, rgba(lc, 0.18 + 0.06 * Math.sin(t * 2 + lx * 10))], [1, rgba(lc, 0)]]);
+      ctx.fillRect(box.x, box.y, box.w, box.h);
+    });
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.ellipse(w / 2, floorY + 4 * u, w * 0.32, h * 0.08, 0, 0, TAU); ctx.stroke();
+    const R2 = rng(Math.floor(t * 8) * 47); ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 15; i++) { const px = w * (0.1 + R2() * 0.8), py = h * R2() * 0.65; ctx.fillStyle = `rgba(200,140,255,${0.1 + R2() * 0.2})`; ctx.beginPath(); ctx.arc(px, py, (1 + R2() * 2) * u, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  },
+  castle(r, ctx, t, w, h, u, box) {
+    const d = r.bgData('castle', w, h, R => ({
+      stars: Array.from({ length: 60 }, () => ({ x: R(), y: R() * 0.45, s: 0.4 + R() * 1.2, ph: R() * TAU, sp: 0.4 + R() * 1.8 })),
+      bats: Array.from({ length: 8 }, () => ({ x: R(), y: 0.1 + R() * 0.3, sp: 0.3 + R() * 0.6, ph: R() * TAU, s: 3 + R() * 4 }))
+    }));
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, 0, 0, h), [[0, '#0a0014'], [0.35, '#1a0a30'], [0.6, '#2a1040'], [1, '#050008']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    ctx.fillStyle = grad(ctx.createRadialGradient(w * 0.5, h * 0.35, 0, w * 0.5, h * 0.35, h * 0.5), [[0, 'rgba(80,30,120,0.3)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    ctx.fillStyle = '#fff';
+    for (const s of d.stars) { ctx.globalAlpha = 0.2 + 0.5 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph)); ctx.beginPath(); ctx.arc(s.x * w, s.y * h, s.s * u, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    const cy = h * 0.5;
+    ctx.fillStyle = '#0d0018'; ctx.beginPath();
+    ctx.moveTo(w * 0.25, cy); ctx.lineTo(w * 0.25, cy - h * 0.35); ctx.lineTo(w * 0.28, cy - h * 0.35);
+    for (let i = 0; i < 5; i++) ctx.lineTo(w * (0.28 + i * 0.02), cy - h * (0.28 + (i % 2) * 0.04));
+    ctx.lineTo(w * 0.38, cy - h * 0.28); ctx.lineTo(w * 0.38, cy - h * 0.5); ctx.lineTo(w * 0.42, cy - h * 0.5);
+    ctx.lineTo(w * 0.42, cy - h * 0.28); ctx.lineTo(w * 0.58, cy - h * 0.28); ctx.lineTo(w * 0.58, cy - h * 0.5); ctx.lineTo(w * 0.62, cy - h * 0.5);
+    ctx.lineTo(w * 0.62, cy - h * 0.28);
+    for (let i = 0; i < 5; i++) ctx.lineTo(w * (0.62 + i * 0.02), cy - h * (0.28 + (i % 2) * 0.04));
+    ctx.lineTo(w * 0.75, cy - h * 0.35); ctx.lineTo(w * 0.75, cy); ctx.lineTo(w * 0.75, h); ctx.lineTo(w * 0.25, h); ctx.closePath(); ctx.fill();
+    const winY = cy - h * 0.18;
+    [[0.35, 0.55], [0.5, 0.7], [0.65, 0.55]].forEach(([wx, ws]) => {
+      const fl = 0.4 + 0.3 * Math.sin(t * 3 + wx * 10);
+      ctx.fillStyle = `rgba(255,180,60,${fl})`; rr(ctx, w * wx - 10 * u, winY - ws * 20 * u, 20 * u, ws * 40 * u, 3 * u); ctx.fill();
+      ctx.fillStyle = `rgba(255,140,30,${fl * 0.3})`; ctx.beginPath(); ctx.arc(w * wx, winY, 30 * u, 0, TAU); ctx.fill();
+    });
+    ctx.fillStyle = grad(ctx.createLinearGradient(0, cy, 0, h), [[0, '#08000f'], [1, '#020004']]);
+    ctx.fillRect(box.x, cy + h * 0.02, box.w, box.y + box.h - cy);
+    for (const b of d.bats) {
+      const bx = mod(b.x * w + t * b.sp * 80 * u, w + 40 * u) - 20 * u, by = b.y * h + Math.sin(t * 3 + b.ph) * 15 * u;
+      const wing = Math.sin(t * 8 + b.ph) * 0.4;
+      ctx.fillStyle = '#1a0030'; ctx.save(); ctx.translate(bx, by);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-b.s * 2 * u, -b.s * (1 + wing) * u, -b.s * 3 * u, b.s * wing * u);
+      ctx.moveTo(0, 0); ctx.quadraticCurveTo(b.s * 2 * u, -b.s * (1 + wing) * u, b.s * 3 * u, b.s * wing * u);
+      ctx.fill(); ctx.restore();
+    }
+  },
+  neon(r, ctx, t, w, h, u, box) {
+    ctx.fillStyle = '#050510'; ctx.fillRect(box.x, box.y, box.w, box.h);
+    const cx = w / 2, cy = h / 2, colors = ['#ff2a55', '#00d2ff', '#8b3dff', '#ffe600', '#00ff88'];
+    for (let i = 0; i < 12; i++) {
+      const depth = (i + mod(t * 1.5, 1)) / 12, s = 0.1 + depth * 0.9, a = 0.15 + (1 - depth) * 0.5;
+      ctx.strokeStyle = rgba(colors[i % colors.length], a); ctx.lineWidth = (3 - depth * 2) * u;
+      const hw = w * 0.45 * s, hh = h * 0.42 * s;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.3 + i * 0.15);
+      rr(ctx, -hw, -hh, hw * 2, hh * 2, 20 * u * s); ctx.stroke(); ctx.restore();
+    }
+    ctx.fillStyle = grad(ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.15), [[0, 'rgba(139,61,255,0.2)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    const R3 = rng(Math.floor(t * 6) * 73); ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 20; i++) { const px = R3() * w, py = R3() * h; ctx.fillStyle = rgba(colors[Math.floor(R3() * colors.length)], 0.05 + R3() * 0.1); ctx.beginPath(); ctx.arc(px, py, (1 + R3() * 3) * u, 0, TAU); ctx.fill(); }
+    ctx.restore();
   }
 };
 
@@ -1079,7 +1202,7 @@ function halftoneTile() {
 }
 
 class Renderer {
-  constructor(store) { this.store = store; this.p = null; this.tl = { items: [], total: 0 }; this.buffers = []; this.hit = { onom: null }; this._bg = {}; this._wrap = new Map(); this._g = new Map(); this._ev = []; this._pat = new WeakMap(); this.S = 1; }
+  constructor(store) { this.store = store; this.p = null; this.tl = { items: [], total: 0 }; this.buffers = []; this.hit = { onom: null, chars: [] }; this._bg = {}; this._wrap = new Map(); this._g = new Map(); this._ev = []; this._pat = new WeakMap(); this.S = 1; }
   setProject(p) { this.p = p; this.tl = OD.timeline(p); this.charById = new Map(p.characters.map(c => [c.id, c])); this._ev = []; if (this._wrap.size > 400) this._wrap.clear(); if (this._g.size > 400) this._g.clear(); }
   logical() { return (this.p && C.aspect[this.p.meta.aspect]) || [1280, 720]; }
   bgData(name, w, h, fn) { const k = name + '|' + w + 'x' + h; return this._bg[k] || (this._bg[k] = fn(rng(hash(k)))); }
@@ -1116,7 +1239,7 @@ class Renderer {
   renderAt(ctx, W, H, t, opt) { const l = OD.locate(this.tl, t); this.renderFrame(ctx, W, H, l.index, l.local, opt); }
   renderFrame(ctx, W, H, index, local, opt) {
     opt = opt || {};
-    if (opt.recordHit) this.hit.onom = null;
+    if (opt.recordHit) { this.hit.onom = null; this.hit.chars = []; }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     if (!this.p || index < 0 || !this.p.scenes[index]) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); return; }
     const sc = this.p.scenes[index], tr = index > 0 ? sc.transition : 'cut', td = OD.TRANSITION;
@@ -1195,11 +1318,16 @@ class Renderer {
     return { x: m, y: h - bh - (land ? 24 * u + lb * 0.4 : 70 * u), w: w - 2 * m, h: bh };
   }
   castX(pos, w, h) { const land = w >= h * 1.1; return w * ({ left: land ? 0.24 : 0.3, right: land ? 0.76 : 0.7 }[pos] || 0.5); }
-  castLayout(pos, w, h, u) {
+  castLayout(pos, w, h, u, m) {
     const land = w >= h * 1.1, dl = this.dlgRect('normal', w, h, u);
     let H = land ? h * 0.8 : Math.min(h * 0.52, w * 0.9), bottom = land ? h * 1.02 : dl.y + dl.h * 0.35;
     if (pos === 'close-up') { H *= 1.38; bottom += H * 0.2; }
-    return { x: this.castX(pos, w, h), H, bottom };
+    let x = this.castX(pos, w, h);
+    if (m && m.freeX != null) x = (m.freeX / 100) * w;
+    if (m && m.freeY != null) bottom = (m.freeY / 100) * h;
+    const sc = m && m.scale != null ? m.scale : 1;
+    H *= sc;
+    return { x, H, bottom };
   }
   animXf(anim, t, u, w, h, idx) {
     const br = 0.5 - 0.5 * Math.cos((t + idx * 0.7) * TAU / 3.2);
@@ -1224,9 +1352,9 @@ class Renderer {
         else if (m.talking && (vo ? vo.talking : t >= tm.typeStart && t < tm.typeEnd) && Math.floor(t * 10) % 2 === 0) variant = 'talk';
       }
       const img = this.spriteFor(ch, m.pose, variant); if (!img) continue;
-      const L = this.castLayout(m.pos, w, h, u), a = this.animXf(m.anim, t, u, w, h, i);
+      const L = this.castLayout(m.pos, w, h, u, m), a = this.animXf(m.anim, t, u, w, h, i);
       const ar = (img.naturalWidth || 400) / (img.naturalHeight || 500);
-      let H = L.H, W = H * ar; if (W > w * 0.62) { W = w * 0.62; H = W / ar; }
+      let H = L.H, W = H * ar; if (W > w * 0.9) { W = w * 0.9; H = W / ar; }
       ctx.save();
       ctx.globalAlpha = a.alpha;
       ctx.translate(L.x + a.dx, L.bottom + a.dy); ctx.rotate(a.r); ctx.scale(a.s * (m.flip ? -1 : 1), a.s * a.sy);
@@ -1235,6 +1363,7 @@ class Renderer {
       if (anyTalk && !m.talking && 'filter' in ctx) ctx.filter = 'brightness(0.6) saturate(0.75)';
       ctx.drawImage(img, -W / 2, -H, W, H);
       ctx.restore();
+      if (opt && opt.recordHit) this.hit.chars.push({ idx: i, x: L.x + a.dx - W / 2, y: L.bottom + a.dy - H, w: W, h: H });
     }
   }
   drawOnom(ctx, sc, t, w, h, u, opt) {
@@ -2318,26 +2447,53 @@ function setMode(m) { player.setMode(m); $$('#t-mode button').forEach(b => b.set
 function fullscreen() { const w = $('#stage-wrap'); if (document.fullscreenElement) document.exitFullscreen(); else if (w.requestFullscreen) w.requestFullscreen().catch(() => {}); }
 function audition(v) { audio.ensure(); audio.sfx(v); }
 
-/* ---------------- lienzo: arrastrar onomatopeya ---------------- */
+/* ---------------- lienzo: arrastrar onomatopeya y personajes ---------------- */
 const stageEl = $('#stage');
 let drag = null;
 const inside = (pt, b) => b && pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h;
+function hitChar(pt) {
+  const chars = (player.renderer.hit && player.renderer.hit.chars) || [];
+  for (let i = chars.length - 1; i >= 0; i--) if (inside(pt, chars[i])) return chars[i];
+  return null;
+}
 stageEl.addEventListener('pointerdown', e => {
   const pt = player.toLogical(e.clientX, e.clientY), hb = player.renderer.hit.onom;
   if (!player.playing && inside(pt, hb)) {
     const o = S.p.scenes[S.sel].onom, [lw, lh] = player.renderer.logical();
-    drag = { ox: pt.x - o.x / 100 * lw, oy: pt.y - o.y / 100 * lh, lw, lh };
+    drag = { type: 'onom', ox: pt.x - o.x / 100 * lw, oy: pt.y - o.y / 100 * lh, lw, lh };
     Hist.checkpoint(null); stageEl.setPointerCapture(e.pointerId); stageEl.style.cursor = 'grabbing'; e.preventDefault(); return;
+  }
+  if (!player.playing) {
+    const ch = hitChar(pt);
+    if (ch) {
+      const [lw, lh] = player.renderer.logical();
+      const m = S.p.scenes[S.sel].cast[ch.idx];
+      if (m) {
+        const curX = m.freeX != null ? (m.freeX / 100) * lw : player.renderer.castX(m.pos, lw, lh);
+        const curY = m.freeY != null ? (m.freeY / 100) * lh : player.renderer.castLayout(m.pos, lw, lh, Math.min(lw, lh) / 720, m).bottom;
+        drag = { type: 'char', idx: ch.idx, ox: pt.x - curX, oy: pt.y - curY, lw, lh };
+        Hist.checkpoint(null); stageEl.setPointerCapture(e.pointerId); stageEl.style.cursor = 'grabbing'; e.preventDefault(); return;
+      }
+    }
   }
   if (player.playing && player.mode === 'click') player.advance();
 });
 stageEl.addEventListener('pointermove', e => {
   const pt = player.toLogical(e.clientX, e.clientY);
   if (drag) {
-    change(p => { const o = p.scenes[S.sel].onom; o.x = Math.round(clamp((pt.x - drag.ox) / drag.lw * 100, 0, 100)); o.y = Math.round(clamp((pt.y - drag.oy) / drag.lh * 100, 0, 100)); }, { noHistory: true });
+    if (drag.type === 'onom') {
+      change(p => { const o = p.scenes[S.sel].onom; o.x = Math.round(clamp((pt.x - drag.ox) / drag.lw * 100, 0, 100)); o.y = Math.round(clamp((pt.y - drag.oy) / drag.lh * 100, 0, 100)); }, { noHistory: true });
+    } else if (drag.type === 'char') {
+      change(p => {
+        const m = p.scenes[S.sel].cast[drag.idx];
+        if (!m) return;
+        m.freeX = Math.round(clamp((pt.x - drag.ox) / drag.lw * 100, 0, 100));
+        m.freeY = Math.round(clamp((pt.y - drag.oy) / drag.lh * 100, 0, 100));
+      }, { noHistory: true });
+    }
     return;
   }
-  stageEl.style.cursor = !player.playing && inside(pt, player.renderer.hit.onom) ? 'grab' : player.playing && player.mode === 'click' ? 'pointer' : 'default';
+  stageEl.style.cursor = !player.playing && (inside(pt, player.renderer.hit.onom) || hitChar(pt)) ? 'grab' : player.playing && player.mode === 'click' ? 'pointer' : 'default';
 });
 const endDrag = () => { if (!drag) return; drag = null; stageEl.style.cursor = 'grab'; if (S.tab === 'scene') renderInspector(); };
 stageEl.addEventListener('pointerup', endDrag);
@@ -2435,7 +2591,12 @@ function sceneTab() {
     return h('div', { class: 'cast-card' + (m.talking ? ' talking' : '') },
       h('div', { class: 'cast-head' }, avatar(ch, m.pose), sel(chars, m.char, v => set(s => { s.cast[k].char = v; }, null, { inspector: true }), { label: 'Personaje' }),
         h('button', { class: 'icon-btn sm', title: 'Quitar de la escena', 'aria-label': 'Quitar de la escena', html: icon('x'), onclick: () => set(s => { s.cast.splice(k, 1); }, null, { inspector: true }) })),
-      h('div', { class: 'row' }, field('Expresión', sel(C.pose, m.pose, v => set(s => { s.cast[k].pose = v; }, null, { inspector: true }))), field('Posición', sel(C.position, m.pos, v => set(s => { s.cast[k].pos = v; })))),
+      h('div', { class: 'row' }, field('Expresión', sel(C.pose, m.pose, v => set(s => { s.cast[k].pose = v; }, null, { inspector: true }))), field('Posición base', sel(C.position, m.pos, v => set(s => { s.cast[k].pos = v; s.cast[k].freeX = null; s.cast[k].freeY = null; }, null, { inspector: true })))),
+      range('Tamaño', m.scale != null ? m.scale : 1, 0.3, 2.5, 0.05, v => set(s => { s.cast[k].scale = v; }, 'cscale' + k), v => Math.round(v * 100) + '%'),
+      m.freeX != null ? h('div', { class: 'row' },
+        range('Posición X libre', m.freeX, 0, 100, 1, v => set(s => { s.cast[k].freeX = v; }, 'cfx' + k), v => v + '%'),
+        range('Posición Y libre', m.freeY != null ? m.freeY : 80, 0, 100, 1, v => set(s => { s.cast[k].freeY = v; }, 'cfy' + k), v => v + '%')) : null,
+      m.freeX != null ? h('button', { class: 'btn sm ghost', text: 'Restablecer posición base', onclick: () => set(s => { s.cast[k].freeX = null; s.cast[k].freeY = null; }, null, { inspector: true }) }) : h('div', { class: 'hint', text: 'Tip: Arrastra el personaje en el lienzo para moverlo libremente.' }),
       field('Animación de entrada', sel(C.anim, m.anim, v => set(s => { s.cast[k].anim = v; }))),
       h('div', { class: 'row' },
         sw('Habla', m.talking, v => set(s => { s.cast.forEach((c, j) => { c.talking = j === k ? v : false; }); if (v && !s.speaker && ch) s.speaker = ch.name; }, null, { inspector: true }), { title: 'El personaje que habla mueve la boca y los demás se atenúan' }),
